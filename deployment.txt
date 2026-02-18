@@ -1,0 +1,2 @@
+Frontend URL: <your-netlify-or-vercel-url>
+Backend URL: <your-render-or-railway-url>
