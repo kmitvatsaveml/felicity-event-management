@@ -146,6 +146,24 @@ function EventDetail() {
         </div>
       </div>
 
+      {/* Quick Action Links */}
+      <div className="flex gap-3 mb-6">
+        {event.eventType === 'merchandise' && (
+          <Link to={'/organizer/events/' + id + '/payments'} className="card flex-1 text-center hover:bg-indigo-50 transition-colors">
+            <p className="text-lg font-bold text-indigo-600">💳</p>
+            <p className="text-sm font-medium">Payment Approvals</p>
+          </Link>
+        )}
+        <Link to={'/organizer/events/' + id + '/scanner'} className="card flex-1 text-center hover:bg-green-50 transition-colors">
+          <p className="text-lg font-bold text-green-600">📱</p>
+          <p className="text-sm font-medium">QR Scanner</p>
+        </Link>
+        <Link to={'/events/' + id + '/forum'} className="card flex-1 text-center hover:bg-purple-50 transition-colors">
+          <p className="text-lg font-bold text-purple-600">💬</p>
+          <p className="text-sm font-medium">Discussion Forum</p>
+        </Link>
+      </div>
+
       {/* Analytics */}
       {analytics && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

@@ -140,6 +140,20 @@ function EventDetails() {
         )}
       </div>
 
+      {/* Forum & Feedback Links */}
+      <div className="flex gap-3 mb-6">
+        <Link to={'/events/' + event._id + '/forum'} className="card flex-1 text-center hover:bg-purple-50 transition-colors">
+          <p className="text-lg">💬</p>
+          <p className="text-sm font-medium">Discussion Forum</p>
+        </Link>
+        {isRegistered && (
+          <Link to={'/events/' + event._id + '/feedback'} className="card flex-1 text-center hover:bg-amber-50 transition-colors">
+            <p className="text-lg">⭐</p>
+            <p className="text-sm font-medium">Leave Feedback</p>
+          </Link>
+        )}
+      </div>
+
       {/* Registration Form */}
       {canRegister && (
         <div className="card mb-6">

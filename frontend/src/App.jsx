@@ -14,15 +14,20 @@ import ParticipantProfile from './pages/participant/Profile';
 import ClubsListing from './pages/participant/ClubsListing';
 import OrganizerView from './pages/participant/OrganizerView';
 import TicketDetail from './pages/participant/TicketDetail';
+import EventForum from './pages/participant/EventForum';
+import EventFeedback from './pages/participant/EventFeedback';
 
 import OrganizerDashboard from './pages/organizer/Dashboard';
 import CreateEvent from './pages/organizer/CreateEvent';
 import EditEvent from './pages/organizer/EditEvent';
 import OrgEventDetail from './pages/organizer/EventDetail';
 import OrganizerProfile from './pages/organizer/Profile';
+import PaymentApprovals from './pages/organizer/PaymentApprovals';
+import QRScanner from './pages/organizer/QRScanner';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import ManageClubs from './pages/admin/ManageClubs';
+import PasswordResetRequests from './pages/admin/PasswordResetRequests';
 
 function App() {
   const { user, loading } = useAuth();
@@ -79,6 +84,12 @@ function App() {
           <Route path="/ticket/:ticketId" element={
             <ProtectedRoute roles={['participant']}><TicketDetail /></ProtectedRoute>
           } />
+          <Route path="/events/:id/forum" element={
+            <ProtectedRoute roles={['participant', 'organizer']}><EventForum /></ProtectedRoute>
+          } />
+          <Route path="/events/:id/feedback" element={
+            <ProtectedRoute roles={['participant']}><EventFeedback /></ProtectedRoute>
+          } />
 
           {/* Organizer Routes */}
           <Route path="/organizer/dashboard" element={
@@ -96,6 +107,12 @@ function App() {
           <Route path="/organizer/profile" element={
             <ProtectedRoute roles={['organizer']}><OrganizerProfile /></ProtectedRoute>
           } />
+          <Route path="/organizer/events/:id/payments" element={
+            <ProtectedRoute roles={['organizer']}><PaymentApprovals /></ProtectedRoute>
+          } />
+          <Route path="/organizer/events/:id/scanner" element={
+            <ProtectedRoute roles={['organizer']}><QRScanner /></ProtectedRoute>
+          } />
 
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={
@@ -103,6 +120,9 @@ function App() {
           } />
           <Route path="/admin/manage-clubs" element={
             <ProtectedRoute roles={['admin']}><ManageClubs /></ProtectedRoute>
+          } />
+          <Route path="/admin/password-resets" element={
+            <ProtectedRoute roles={['admin']}><PasswordResetRequests /></ProtectedRoute>
           } />
 
           <Route path="*" element={<Navigate to={getHomePath()} replace />} />

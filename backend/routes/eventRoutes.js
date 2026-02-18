@@ -1,11 +1,24 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 const Organizer = require('../models/Organizer');
 const { protect, authorize } = require('../middleware/auth');
 const generateTicket = require('../utils/generateTicket');
 const sendEmail = require('../utils/sendEmail');
+
+// multer setup for payment proof uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '..', 'uploads'));
+  },
+  filename: function (req, file, cb) {
+    cb(null, 'payment_' + Date.now() + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // GET /api/events - browse events (public for participants)
 router.get('/', protect, async (req, res) => {
@@ -198,10 +211,12 @@ router.post('/:id/register', protect, authorize('participant'), async (req, res)
     }
 
     // create registration
+    const isMerch = event.eventType === 'merchandise' && event.registrationFee > 0;
     const registration = await Registration.create({
       eventId: event._id,
       userId: req.user._id,
-      status: 'registered',
+      status: isMerch ? 'pending_payment' : 'registered',
+      paymentStatus: isMerch ? 'pending' : 'not_required',
       formResponses: req.body.formResponses || {},
       merchSelection: merchSelection
     });
@@ -210,41 +225,45 @@ router.post('/:id/register', protect, authorize('participant'), async (req, res)
     event.registrationCount += 1;
     await event.save();
 
-    // generate ticket
-    const userName = req.user.firstName + ' ' + req.user.lastName;
-    const ticket = await generateTicket(
-      registration._id,
-      event._id,
-      req.user._id,
-      event.name,
-      userName
-    );
+    // generate ticket only for non-merch or free events
+    if (!isMerch) {
+      const userName = req.user.firstName + ' ' + req.user.lastName;
+      const ticket = await generateTicket(
+        registration._id,
+        event._id,
+        req.user._id,
+        event.name,
+        userName
+      );
+      registration.ticketId = ticket.ticketId;
+      await registration.save();
 
-    // update registration with ticket id
-    registration.ticketId = ticket.ticketId;
-    await registration.save();
+      // send confirmation email
+      const emailHtml = `
+        <h2>Registration Confirmed!</h2>
+        <p>Hi ${req.user.firstName},</p>
+        <p>You have successfully registered for <strong>${event.name}</strong>.</p>
+        <p><strong>Ticket ID:</strong> ${ticket.ticketId}</p>
+        <p><strong>Event Date:</strong> ${new Date(event.startDate).toLocaleDateString()}</p>
+        <p><strong>Event Type:</strong> ${event.eventType}</p>
+        <img src="${ticket.qrCode}" alt="QR Code" style="width: 200px; height: 200px;" />
+        <p>Please keep this ticket for entry.</p>
+      `;
+      sendEmail(req.user.email, 'Registration Confirmed - ' + event.name, emailHtml);
 
-    // send confirmation email
-    const emailHtml = `
-      <h2>Registration Confirmed!</h2>
-      <p>Hi ${req.user.firstName},</p>
-      <p>You have successfully registered for <strong>${event.name}</strong>.</p>
-      <p><strong>Ticket ID:</strong> ${ticket.ticketId}</p>
-      <p><strong>Event Date:</strong> ${new Date(event.startDate).toLocaleDateString()}</p>
-      <p><strong>Event Type:</strong> ${event.eventType}</p>
-      <img src="${ticket.qrCode}" alt="QR Code" style="width: 200px; height: 200px;" />
-      <p>Please keep this ticket for entry.</p>
-    `;
-    sendEmail(req.user.email, 'Registration Confirmed - ' + event.name, emailHtml);
-
-    res.status(201).json({
-      message: 'Registration successful',
-      registration,
-      ticket: {
-        ticketId: ticket.ticketId,
-        qrCode: ticket.qrCode
-      }
-    });
+      res.status(201).json({
+        message: 'Registration successful',
+        registration,
+        ticket: { ticketId: ticket.ticketId, qrCode: ticket.qrCode }
+      });
+    } else {
+      // merch order placed, waiting for payment proof
+      res.status(201).json({
+        message: 'Order placed. Please upload payment proof to complete your purchase.',
+        registration,
+        requiresPayment: true
+      });
+    }
   } catch (err) {
     console.error('Registration error:', err);
     if (err.code === 11000) {
@@ -268,6 +287,29 @@ router.get('/my/registrations', protect, authorize('participant'), async (req, r
   } catch (err) {
     console.error('My registrations error:', err);
     res.status(500).json({ message: 'Failed to fetch registrations' });
+  }
+});
+
+// POST /api/events/:id/upload-payment - upload payment proof for merchandise
+router.post('/:id/upload-payment', protect, authorize('participant'), upload.single('paymentProof'), async (req, res) => {
+  try {
+    const reg = await Registration.findOne({ eventId: req.params.id, userId: req.user._id });
+    if (!reg) {
+      return res.status(404).json({ message: 'Registration not found' });
+    }
+    if (reg.paymentStatus !== 'pending' && reg.paymentStatus !== 'rejected') {
+      return res.status(400).json({ message: 'Payment proof not required or already approved' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please upload a payment proof image' });
+    }
+    reg.paymentProof = '/uploads/' + req.file.filename;
+    reg.paymentStatus = 'pending';
+    await reg.save();
+    res.json({ message: 'Payment proof uploaded successfully', registration: reg });
+  } catch (err) {
+    console.error('Payment upload error:', err);
+    res.status(500).json({ message: 'Failed to upload payment proof' });
   }
 });
 

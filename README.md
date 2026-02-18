@@ -37,15 +37,21 @@ A centralized platform for managing events, clubs, and participants for the Feli
 │   │   ├── User.js            # Participant and auth user schema
 │   │   ├── Organizer.js       # Club/organizer profile schema
 │   │   ├── Event.js           # Event schema with form builder and merch support
-│   │   ├── Registration.js    # Registration records linking users to events
-│   │   └── Ticket.js          # Generated tickets with QR codes
+│   │   ├── Registration.js    # Registration records with payment approval fields
+│   │   ├── Ticket.js          # Generated tickets with QR codes
+│   │   ├── ForumMessage.js    # Discussion forum messages with threading
+│   │   ├── Feedback.js        # Anonymous event feedback with ratings
+│   │   └── PasswordResetRequest.js # Organizer password reset workflow
 │   ├── routes/
 │   │   ├── authRoutes.js      # Login, register, session endpoints
 │   │   ├── userRoutes.js      # Participant profile, preferences, follow/unfollow
-│   │   ├── eventRoutes.js     # Browse, search, filter, register for events
-│   │   ├── organizerRoutes.js # Event CRUD, analytics, CSV export, profile
-│   │   ├── adminRoutes.js     # Organizer management, stats, password resets
-│   │   └── ticketRoutes.js    # Ticket lookup endpoints
+│   │   ├── eventRoutes.js     # Browse, search, filter, register, payment upload
+│   │   ├── organizerRoutes.js # Event CRUD, analytics, CSV, payments, QR scanning
+│   │   ├── adminRoutes.js     # Organizer management, stats, password reset workflow
+│   │   ├── ticketRoutes.js    # Ticket lookup endpoints
+│   │   ├── forumRoutes.js     # Discussion forum CRUD, moderation, reactions
+│   │   └── feedbackRoutes.js  # Anonymous feedback submission and aggregation
+│   ├── uploads/               # Payment proof images
 │   ├── utils/
 │   │   ├── seedAdmin.js       # Seeds initial admin account on first run
 │   │   ├── generateTicket.js  # Creates ticket with unique ID and QR code
@@ -64,9 +70,28 @@ A centralized platform for managing events, clubs, and participants for the Feli
 │   │   │   ├── Login.jsx          # Login page
 │   │   │   ├── Signup.jsx         # Participant registration
 │   │   │   ├── Onboarding.jsx     # Interest and club selection
-│   │   │   ├── participant/       # Participant-specific pages
-│   │   │   ├── organizer/         # Organizer-specific pages
-│   │   │   └── admin/             # Admin-specific pages
+│   │   │   ├── participant/
+│   │   │   │   ├── Dashboard.jsx      # My events and participation history
+│   │   │   │   ├── BrowseEvents.jsx   # Search and filter events
+│   │   │   │   ├── EventDetails.jsx   # Event info and registration
+│   │   │   │   ├── EventForum.jsx     # Discussion forum for events
+│   │   │   │   ├── EventFeedback.jsx  # Anonymous feedback submission
+│   │   │   │   ├── TicketDetail.jsx   # Ticket view with QR code
+│   │   │   │   ├── Profile.jsx        # Participant profile management
+│   │   │   │   ├── ClubsListing.jsx   # Browse and follow organizers
+│   │   │   │   └── OrganizerView.jsx  # Organizer detail page
+│   │   │   ├── organizer/
+│   │   │   │   ├── Dashboard.jsx      # Organizer overview and analytics
+│   │   │   │   ├── CreateEvent.jsx    # 3-step event creation
+│   │   │   │   ├── EditEvent.jsx      # Status-based event editing
+│   │   │   │   ├── EventDetail.jsx    # Event detail with participants
+│   │   │   │   ├── PaymentApprovals.jsx # Merchandise payment review
+│   │   │   │   ├── QRScanner.jsx      # QR scanner and attendance
+│   │   │   │   └── Profile.jsx        # Organizer profile management
+│   │   │   └── admin/
+│   │   │       ├── Dashboard.jsx      # System stats
+│   │   │       ├── ManageClubs.jsx    # Organizer CRUD
+│   │   │       └── PasswordResetRequests.jsx # Reset workflow
 │   │   ├── utils/
 │   │   │   └── api.js             # Axios instance with interceptors
 │   │   ├── App.jsx                # Main routing configuration
@@ -190,3 +215,118 @@ npm run build
 4. **QR codes as base64 data URLs** - QR codes are generated server-side and stored as base64 strings in the Ticket document. This avoids file system dependencies and makes tickets portable.
 
 5. **JWT with 7-day expiry** - Balances security with user convenience. Tokens are stored in localStorage for session persistence across browser restarts, as required by the spec.
+
+## Advanced Features Implemented (Part 2) [30 Marks]
+
+### Tier A: Core Advanced Features [16 Marks]
+
+#### 1. Merchandise Payment Approval Workflow [8 Marks]
+**Justification:** Chosen because it builds directly on the existing merchandise event system and adds real-world payment verification logic that demonstrates complex state management.
+
+**Implementation approach:**
+- Extended the Registration model with `paymentStatus` (pending/approved/rejected), `paymentProof` (file path), `paymentReviewedBy`, and `paymentNote` fields
+- When a participant purchases merchandise with a fee, the order enters `pending_payment` status instead of immediately generating a ticket
+- Participant uploads a payment proof image via multer file upload to `/api/events/:id/upload-payment`
+- Organizers see a dedicated Payment Approvals tab (`/organizer/events/:id/payments`) with filter tabs for all/pending/approved/rejected orders
+- On approval: ticket with QR code is generated, stock is decremented, confirmation email is sent via nodemailer
+- On rejection: participant is notified via email with the rejection reason and can re-upload a new proof
+- No QR code or ticket is generated while the order is in pending or rejected state
+
+**Technical decisions:**
+- Used multer for server-side file upload handling with 5MB size limit
+- Payment proof images are stored in the `/uploads` directory and served as static files
+- Approval/rejection actions are idempotent and include audit fields (reviewedBy, reviewedAt)
+
+#### 2. QR Scanner & Attendance Tracking [8 Marks]
+**Justification:** Chosen because it completes the event lifecycle by enabling organizers to verify tickets and track attendance during events, leveraging the existing QR code infrastructure.
+
+**Implementation approach:**
+- Built a scanner interface at `/organizer/events/:id/scanner` where organizers enter or paste ticket IDs
+- Backend validates the ticket against the specific event, checks for duplicate scans, and marks attendance with timestamp
+- Live attendance dashboard shows scanned vs not-yet-scanned counts with a progress bar
+- Duplicate scan detection returns the original scan time and participant name
+- Cancelled or rejected registrations are blocked from scanning
+- Manual override allows organizers to mark/unmark attendance for exceptional cases
+- Attendance reports exportable as CSV with name, email, ticket ID, status, and scan timestamp
+- Scan history displayed in real-time on the scanner page
+
+**Technical decisions:**
+- Used text input for ticket ID entry (works with physical QR scanners that output text, mobile camera apps, or manual entry)
+- Attendance is tracked by changing registration status to `attended`, avoiding a separate attendance collection
+- Export endpoint generates CSV server-side for reliable formatting
+
+### Tier B: Real-time & Communication Features [12 Marks]
+
+#### 1. Real-Time Discussion Forum [6 Marks]
+**Justification:** Chosen because it adds collaborative functionality to events, allowing participants and organizers to interact, which improves engagement and communication.
+
+**Implementation approach:**
+- Created a ForumMessage model with fields for eventId, userId, content, parentId (for threading), isPinned, isAnnouncement, reactions, and isDeleted (soft delete)
+- Forum page at `/events/:id/forum` accessible to registered participants and the event organizer
+- Messages are polled every 5 seconds for near real-time updates without requiring WebSocket infrastructure
+- Organizers can post announcements (highlighted with a distinct style), pin important messages, and moderate by deleting inappropriate content
+- Participants can reply to messages (threaded view), react with emoji (👍 or ❤️), and delete their own messages
+- Reactions toggle on/off per user per emoji to prevent spam
+- Messages sorted with pinned first, then by creation date
+
+**Technical decisions:**
+- Used polling (setInterval 5s) instead of WebSockets to keep the infrastructure simple and deployment-friendly on free hosting tiers
+- Soft delete (isDeleted flag) preserves data integrity while hiding deleted messages from the UI
+- Compound index on `eventId + createdAt` for efficient message retrieval
+
+#### 2. Organizer Password Reset Workflow [6 Marks]
+**Justification:** Chosen because it implements a complete request-approval lifecycle that demonstrates workflow management, and it directly addresses the spec requirement that organizer password resets must go through Admin.
+
+**Implementation approach:**
+- Created a PasswordResetRequest model with fields for organizerId, userId, reason, status (pending/approved/rejected), adminComment, newPassword, and reviewedAt
+- Organizers can submit a password reset request from their profile with a reason (via `/api/admin/password-reset-request`)
+- Duplicate pending requests are prevented (one active request per organizer)
+- Admin sees all requests at `/admin/password-resets` with filter tabs for pending/approved/rejected
+- Admin can approve (auto-generates new password, updates the user record, displays credentials) or reject (with a comment explaining why)
+- Request history is maintained with timestamps for full audit trail
+- Generated passwords are displayed to admin for sharing with the organizer
+
+**Technical decisions:**
+- Password generation uses `crypto.randomBytes(6).toString('hex')` for 12-character random passwords
+- New password is hashed with bcrypt before storing in the User model
+- The plaintext password is stored in the request record so admin can reference it later if needed
+
+### Tier C: Integration & Enhancement Features [2 Marks]
+
+#### 1. Anonymous Feedback System [2 Marks]
+**Justification:** Chosen because it provides valuable post-event insights for organizers with minimal implementation complexity, and it enhances the participant experience by giving them a voice.
+
+**Implementation approach:**
+- Created a Feedback model with eventId, userId, rating (1-5 stars), and comment fields
+- One feedback per user per event enforced via compound unique index
+- Participants who attended an event can submit feedback at `/events/:id/feedback`
+- Star rating with hover preview and optional text comment
+- Organizers see aggregated stats: average rating, total reviews, rating distribution bar chart, and individual comments
+- Feedback is displayed anonymously (no user names shown in the feedback list)
+- Users can update their feedback if they change their mind
+
+**Technical decisions:**
+- Used a unique compound index (`eventId + userId`) to enforce one feedback per participant per event at the database level
+- Aggregation is computed server-side to keep the frontend lightweight
+- Comments are displayed without user identification to maintain true anonymity
+
+## Libraries and Frameworks Summary
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| express | 4.18 | REST API framework |
+| mongoose | 7.6 | MongoDB ODM with schema validation |
+| bcrypt | 5.1 | Password hashing |
+| jsonwebtoken | 9.0 | JWT authentication |
+| nodemailer | 6.9 | Email notifications |
+| qrcode | 1.5 | QR code generation for tickets |
+| multer | 1.4 | File upload handling (payment proofs) |
+| uuid | 9.0 | Unique ticket ID generation |
+| cors | 2.8 | Cross-origin request support |
+| dotenv | 16.3 | Environment variable management |
+| react | 18.2 | UI component library |
+| vite | 5.0 | Fast dev server and build tool |
+| react-router-dom | 6.20 | Client-side routing |
+| tailwindcss | 3.3 | Utility-first CSS framework |
+| axios | 1.6 | HTTP client with interceptors |
+| react-hot-toast | 2.4 | Toast notifications |

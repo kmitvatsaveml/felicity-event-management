@@ -24,7 +24,8 @@ function Navbar() {
 
   const adminLinks = [
     { to: '/admin/dashboard', label: 'Dashboard' },
-    { to: '/admin/manage-clubs', label: 'Manage Clubs' }
+    { to: '/admin/manage-clubs', label: 'Manage Clubs' },
+    { to: '/admin/password-resets', label: 'Password Resets' }
   ];
 
   let links = [];

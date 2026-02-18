@@ -13,7 +13,7 @@ const registrationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['registered', 'cancelled', 'rejected', 'attended'],
+    enum: ['registered', 'cancelled', 'rejected', 'attended', 'pending_payment'],
     default: 'registered'
   },
   formResponses: {
@@ -28,6 +28,22 @@ const registrationSchema = new mongoose.Schema({
     color: String,
     quantity: { type: Number, default: 1 }
   },
+  // payment approval fields
+  paymentProof: {
+    type: String,
+    default: ''
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['not_required', 'pending', 'approved', 'rejected'],
+    default: 'not_required'
+  },
+  paymentReviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  paymentReviewedAt: Date,
+  paymentNote: String,
   ticketId: {
     type: String,
     unique: true,

@@ -32,6 +32,8 @@ app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/organizers', require('./routes/organizerRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/tickets', require('./routes/ticketRoutes'));
+app.use('/api/forum', require('./routes/forumRoutes'));
+app.use('/api/feedback', require('./routes/feedbackRoutes'));
 
 // basic health check
 app.get('/api/health', (req, res) => {

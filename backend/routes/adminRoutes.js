@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Organizer = require('../models/Organizer');
 const Event = require('../models/Event');
+const PasswordResetRequest = require('../models/PasswordResetRequest');
 const { protect, authorize } = require('../middleware/auth');
 const sendEmail = require('../utils/sendEmail');
 
@@ -163,6 +164,109 @@ router.get('/stats', protect, authorize('admin'), async (req, res) => {
     res.json({ totalUsers, totalOrganizers, totalEvents, activeEvents });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch stats' });
+  }
+});
+
+// --- Password Reset Workflow Routes ---
+
+// POST /api/admin/password-reset-request - organizer requests a password reset
+router.post('/password-reset-request', protect, authorize('organizer'), async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ message: 'Please provide a reason for the request' });
+
+    const org = await Organizer.findOne({ userId: req.user._id });
+    if (!org) return res.status(404).json({ message: 'Organizer profile not found' });
+
+    // check for existing pending request
+    const pending = await PasswordResetRequest.findOne({
+      organizerId: org._id,
+      status: 'pending'
+    });
+    if (pending) {
+      return res.status(400).json({ message: 'You already have a pending reset request' });
+    }
+
+    const request = await PasswordResetRequest.create({
+      organizerId: org._id,
+      userId: req.user._id,
+      reason
+    });
+
+    res.status(201).json({ message: 'Password reset request submitted', request });
+  } catch (err) {
+    console.error('Password reset request error:', err);
+    res.status(500).json({ message: 'Failed to submit request' });
+  }
+});
+
+// GET /api/admin/password-reset-requests - admin views all requests
+router.get('/password-reset-requests', protect, authorize('admin'), async (req, res) => {
+  try {
+    const requests = await PasswordResetRequest.find()
+      .populate('organizerId', 'name category contactEmail')
+      .populate('userId', 'email')
+      .sort({ createdAt: -1 });
+
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch requests' });
+  }
+});
+
+// PUT /api/admin/password-reset-requests/:id/approve - approve reset request
+router.put('/password-reset-requests/:id/approve', protect, authorize('admin'), async (req, res) => {
+  try {
+    const request = await PasswordResetRequest.findById(req.params.id)
+      .populate('organizerId')
+      .populate('userId');
+    if (!request) return res.status(404).json({ message: 'Request not found' });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ message: 'This request has already been processed' });
+    }
+
+    // generate new password
+    const newPassword = crypto.randomBytes(6).toString('hex');
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(newPassword, salt);
+    await User.findByIdAndUpdate(request.userId._id, { password: hashed });
+
+    request.status = 'approved';
+    request.adminComment = req.body.comment || 'Approved';
+    request.newPassword = newPassword;
+    request.reviewedAt = new Date();
+    await request.save();
+
+    res.json({
+      message: 'Password reset approved',
+      credentials: {
+        email: request.userId.email,
+        password: newPassword
+      }
+    });
+  } catch (err) {
+    console.error('Approve reset error:', err);
+    res.status(500).json({ message: 'Failed to approve request' });
+  }
+});
+
+// PUT /api/admin/password-reset-requests/:id/reject - reject reset request
+router.put('/password-reset-requests/:id/reject', protect, authorize('admin'), async (req, res) => {
+  try {
+    const request = await PasswordResetRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ message: 'Request not found' });
+    if (request.status !== 'pending') {
+      return res.status(400).json({ message: 'This request has already been processed' });
+    }
+
+    request.status = 'rejected';
+    request.adminComment = req.body.comment || 'Rejected';
+    request.reviewedAt = new Date();
+    await request.save();
+
+    res.json({ message: 'Password reset request rejected' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to reject request' });
   }
 });
 
