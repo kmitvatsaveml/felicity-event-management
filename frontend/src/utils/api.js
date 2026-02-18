@@ -2,6 +2,17 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+// derive backend base URL for serving uploaded files
+export const BACKEND_URL = API_BASE.endsWith('/api')
+  ? API_BASE.slice(0, -4)
+  : '';
+
+// helper to get full URL for uploaded files like /uploads/payment_xxx.jpg
+export function getUploadUrl(path) {
+  if (!path) return '';
+  return BACKEND_URL + path;
+}
+
 const api = axios.create({
   baseURL: API_BASE
 });

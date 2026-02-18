@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import api from '../../utils/api';
+import api, { getUploadUrl } from '../../utils/api';
 import toast from 'react-hot-toast';
 
 function PaymentApprovals() {
@@ -110,9 +110,9 @@ function PaymentApprovals() {
                 {order.paymentProof && (
                   <div className="mt-3 border-t pt-3">
                     <p className="text-sm font-medium mb-1">Payment Proof:</p>
-                    <img src={order.paymentProof} alt="Payment proof"
+                    <img src={getUploadUrl(order.paymentProof)} alt="Payment proof"
                       className="max-w-xs rounded border cursor-pointer"
-                      onClick={() => window.open(order.paymentProof, '_blank')} />
+                      onClick={() => window.open(getUploadUrl(order.paymentProof), '_blank')} />
                   </div>
                 )}
 

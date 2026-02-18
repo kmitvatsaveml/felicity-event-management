@@ -1,101 +1,114 @@
 # Felicity Event Management System
 
-A centralized platform for managing events, clubs, and participants for the Felicity fest. Built using the MERN stack.
+A centralized platform built for managing events, clubs, and participants for the Felicity fest at IIIT Hyderabad. The system replaces the traditional chaos of Google Forms, spreadsheets, and WhatsApp groups with a structured, role-based platform where clubs can run events and participants can register, pay, and attend — all in one place.
+
+Built with the **MERN stack**: MongoDB, Express.js, React, and Node.js.
+
+---
 
 ## Technology Stack
 
-### Backend
-- **Node.js** - JavaScript runtime for server-side execution
-- **Express.js (v4.18)** - Minimal and flexible web framework for building REST APIs; chosen for its simplicity and large ecosystem
-- **MongoDB + Mongoose (v7.6)** - NoSQL document database ideal for flexible event/user schemas; Mongoose provides schema validation and query building
-- **bcrypt (v5.1)** - Industry-standard library for hashing passwords before storage; protects against plaintext password leaks
-- **jsonwebtoken (v9.0)** - Implements JWT-based authentication for stateless session management across protected routes
-- **nodemailer (v6.9)** - Sends confirmation emails and tickets to participants upon registration
-- **qrcode (v1.5)** - Generates QR codes embedded in tickets for event entry verification
-- **uuid (v9.0)** - Generates unique ticket IDs to avoid collisions
-- **multer (v1.4)** - Handles multipart form data (file uploads) for custom registration forms
-- **cors (v2.8)** - Enables cross-origin requests between frontend and backend during development and production
-- **dotenv (v16.3)** - Loads environment variables from .env file to keep secrets out of source code
+### Backend Libraries
 
-### Frontend
-- **React (v18.2)** - Component-based UI library; chosen for its virtual DOM efficiency and large community support
-- **Vite (v5.0)** - Fast build tool with hot module replacement; significantly faster than Create React App for development
-- **React Router DOM (v6.20)** - Client-side routing for single-page application navigation with role-based route protection
-- **Tailwind CSS (v3.3)** - Utility-first CSS framework for rapid UI development without writing custom CSS files
-- **Axios (v1.6)** - HTTP client for making API requests; provides interceptors for attaching auth tokens and handling errors globally
-- **react-hot-toast (v2.4)** - Lightweight toast notification library for showing success/error messages to users
+| Library | Version | What it does |
+|---------|---------|--------------|
+| express | 4.18 | Web framework used to define all REST API routes and middleware |
+| mongoose | 7.6 | MongoDB object modeling — provides schema definitions, validation, and query helpers |
+| bcrypt | 5.1 | Hashes passwords before storing them so plaintext passwords are never saved to the database |
+| jsonwebtoken | 9.0 | Creates and verifies JWT tokens used for stateless authentication across all protected routes |
+| nodemailer | 6.9 | Sends emails to participants on registration confirmation, ticket delivery, and payment approval |
+| qrcode | 1.5 | Generates QR code images (as base64 data URLs) embedded inside each ticket |
+| uuid | 9.0 | Generates unique ticket IDs in the format `TKT-XXXXXXXX` to avoid collisions |
+| multer | 1.4 | Handles file uploads (specifically payment proof images) from multipart form requests |
+| cors | 2.8 | Allows the frontend (on a different origin) to make requests to the backend without being blocked |
+| dotenv | 16.3 | Reads environment variables from a `.env` file so secrets like DB credentials are not hardcoded |
+| crypto | built-in | Used to generate random passwords when admin approves an organizer's password reset request |
+
+### Frontend Libraries
+
+| Library | Version | What it does |
+|---------|---------|--------------|
+| react | 18.2 | Core UI library — all pages and components are built as React functional components |
+| vite | 5.0 | Development server and build tool; much faster than CRA with instant hot module replacement |
+| react-router-dom | 6.20 | Handles client-side routing and navigation between pages without full page reloads |
+| tailwindcss | 3.3 | Utility-first CSS framework — used for all styling without writing separate CSS files |
+| axios | 1.6 | HTTP client for API calls; configured with interceptors to auto-attach JWT tokens and handle 401 errors |
+| react-hot-toast | 2.4 | Displays lightweight toast notifications for success and error feedback to the user |
+
+---
 
 ## Project Structure
 
 ```
+2025121016/
 ├── backend/
 │   ├── config/
-│   │   └── db.js              # MongoDB connection setup
+│   │   └── db.js                    # Connects to MongoDB using the URI from .env
 │   ├── middleware/
-│   │   └── auth.js            # JWT verification and role-based access control
+│   │   └── auth.js                  # Verifies JWT on each request; enforces role-based access
 │   ├── models/
-│   │   ├── User.js            # Participant and auth user schema
-│   │   ├── Organizer.js       # Club/organizer profile schema
-│   │   ├── Event.js           # Event schema with form builder and merch support
-│   │   ├── Registration.js    # Registration records with payment approval fields
-│   │   ├── Ticket.js          # Generated tickets with QR codes
-│   │   ├── ForumMessage.js    # Discussion forum messages with threading
-│   │   ├── Feedback.js        # Anonymous event feedback with ratings
-│   │   └── PasswordResetRequest.js # Organizer password reset workflow
+│   │   ├── User.js                  # All users (participants, organizers, admin) with role field
+│   │   ├── Organizer.js             # Club profile details linked to a User record
+│   │   ├── Event.js                 # Event data including custom form fields and merchandise variants
+│   │   ├── Registration.js          # Each participant's registration, including payment status fields
+│   │   ├── Ticket.js                # Generated tickets with unique ID and QR code
+│   │   ├── ForumMessage.js          # Discussion forum messages with threading and reactions
+│   │   ├── Feedback.js              # Anonymous star ratings and comments per event
+│   │   └── PasswordResetRequest.js  # Organizer password reset requests and their approval status
 │   ├── routes/
-│   │   ├── authRoutes.js      # Login, register, session endpoints
-│   │   ├── userRoutes.js      # Participant profile, preferences, follow/unfollow
-│   │   ├── eventRoutes.js     # Browse, search, filter, register, payment upload
-│   │   ├── organizerRoutes.js # Event CRUD, analytics, CSV, payments, QR scanning
-│   │   ├── adminRoutes.js     # Organizer management, stats, password reset workflow
-│   │   ├── ticketRoutes.js    # Ticket lookup endpoints
-│   │   ├── forumRoutes.js     # Discussion forum CRUD, moderation, reactions
-│   │   └── feedbackRoutes.js  # Anonymous feedback submission and aggregation
-│   ├── uploads/               # Payment proof images
+│   │   ├── authRoutes.js            # Login, participant registration, session info
+│   │   ├── userRoutes.js            # Participant profile updates, interests, follow/unfollow
+│   │   ├── eventRoutes.js           # Event browsing, registration, payment proof upload
+│   │   ├── organizerRoutes.js       # Event CRUD, analytics, CSV export, payment approvals, QR scanning
+│   │   ├── adminRoutes.js           # Organizer account management, password reset workflow
+│   │   ├── ticketRoutes.js          # Ticket lookup by ticket ID
+│   │   ├── forumRoutes.js           # Forum message posting, reactions, pinning, deletion
+│   │   └── feedbackRoutes.js        # Feedback submission and aggregated stats
+│   ├── uploads/                     # Uploaded payment proof images stored here
 │   ├── utils/
-│   │   ├── seedAdmin.js       # Seeds initial admin account on first run
-│   │   ├── generateTicket.js  # Creates ticket with unique ID and QR code
-│   │   └── sendEmail.js       # Email sending utility using nodemailer
-│   ├── server.js              # Express app entry point
+│   │   ├── seedAdmin.js             # Creates the default admin account on first server start
+│   │   ├── generateTicket.js        # Creates a ticket with unique ID and QR code image
+│   │   └── sendEmail.js             # Sends emails via nodemailer (confirmations, approvals, rejections)
+│   ├── server.js                    # Express entry point — middleware, routes, server start
 │   ├── package.json
 │   └── .env.example
 ├── frontend/
 │   ├── src/
 │   │   ├── context/
-│   │   │   └── AuthContext.jsx    # Global auth state management
+│   │   │   └── AuthContext.jsx      # Provides login/logout state and user info to all components
 │   │   ├── components/
-│   │   │   ├── Navbar.jsx         # Role-based navigation bar
-│   │   │   └── ProtectedRoute.jsx # Route guard with role checking
+│   │   │   ├── Navbar.jsx           # Navigation bar with links based on the logged-in user's role
+│   │   │   └── ProtectedRoute.jsx   # Redirects unauthenticated or wrong-role users away from a page
 │   │   ├── pages/
-│   │   │   ├── Login.jsx          # Login page
-│   │   │   ├── Signup.jsx         # Participant registration
-│   │   │   ├── Onboarding.jsx     # Interest and club selection
+│   │   │   ├── Login.jsx            # Login form for all roles
+│   │   │   ├── Signup.jsx           # Registration form for participants
+│   │   │   ├── Onboarding.jsx       # Post-signup page to select interests and follow clubs
 │   │   │   ├── participant/
-│   │   │   │   ├── Dashboard.jsx      # My events and participation history
-│   │   │   │   ├── BrowseEvents.jsx   # Search and filter events
-│   │   │   │   ├── EventDetails.jsx   # Event info and registration
-│   │   │   │   ├── EventForum.jsx     # Discussion forum for events
-│   │   │   │   ├── EventFeedback.jsx  # Anonymous feedback submission
-│   │   │   │   ├── TicketDetail.jsx   # Ticket view with QR code
-│   │   │   │   ├── Profile.jsx        # Participant profile management
-│   │   │   │   ├── ClubsListing.jsx   # Browse and follow organizers
-│   │   │   │   └── OrganizerView.jsx  # Organizer detail page
+│   │   │   │   ├── Dashboard.jsx        # Upcoming events and past participation history
+│   │   │   │   ├── BrowseEvents.jsx     # All published events with search and filter options
+│   │   │   │   ├── EventDetails.jsx     # Full event info, registration, and merchandise purchase
+│   │   │   │   ├── EventForum.jsx       # Discussion forum for a specific event
+│   │   │   │   ├── EventFeedback.jsx    # Anonymous feedback submission and summary view
+│   │   │   │   ├── TicketDetail.jsx     # Participant's ticket with QR code
+│   │   │   │   ├── Profile.jsx          # Editable participant profile, interests, password change
+│   │   │   │   ├── ClubsListing.jsx     # All active organizer clubs with follow/unfollow
+│   │   │   │   └── OrganizerView.jsx    # A club's profile and their events
 │   │   │   ├── organizer/
-│   │   │   │   ├── Dashboard.jsx      # Organizer overview and analytics
-│   │   │   │   ├── CreateEvent.jsx    # 3-step event creation
-│   │   │   │   ├── EditEvent.jsx      # Status-based event editing
-│   │   │   │   ├── EventDetail.jsx    # Event detail with participants
-│   │   │   │   ├── PaymentApprovals.jsx # Merchandise payment review
-│   │   │   │   ├── QRScanner.jsx      # QR scanner and attendance
-│   │   │   │   └── Profile.jsx        # Organizer profile management
+│   │   │   │   ├── Dashboard.jsx        # All events overview with analytics summary
+│   │   │   │   ├── CreateEvent.jsx      # Three-step form to create a new event
+│   │   │   │   ├── EditEvent.jsx        # Edit an existing event based on its current status
+│   │   │   │   ├── EventDetail.jsx      # Detailed event view with participant list and actions
+│   │   │   │   ├── PaymentApprovals.jsx # Review and approve or reject merchandise payment proofs
+│   │   │   │   ├── QRScanner.jsx        # Scan ticket IDs to mark attendance and view live stats
+│   │   │   │   └── Profile.jsx          # Edit organizer profile and submit password reset requests
 │   │   │   └── admin/
-│   │   │       ├── Dashboard.jsx      # System stats
-│   │   │       ├── ManageClubs.jsx    # Organizer CRUD
-│   │   │       └── PasswordResetRequests.jsx # Reset workflow
+│   │   │       ├── Dashboard.jsx            # System-wide stats overview
+│   │   │       ├── ManageClubs.jsx          # Create, disable, enable, and delete organizer accounts
+│   │   │       └── PasswordResetRequests.jsx # Approve or reject organizer password reset requests
 │   │   ├── utils/
-│   │   │   └── api.js             # Axios instance with interceptors
-│   │   ├── App.jsx                # Main routing configuration
-│   │   └── main.jsx               # React entry point
+│   │   │   └── api.js               # Axios instance with base URL, auth token interceptor, 401 handler
+│   │   ├── App.jsx                  # All frontend routes with role-based protection
+│   │   └── main.jsx                 # React entry point
 │   ├── index.html
 │   ├── package.json
 │   ├── vite.config.js
@@ -104,229 +117,224 @@ A centralized platform for managing events, clubs, and participants for the Feli
 └── README.md
 ```
 
-## Features Implemented (Part 1)
+## How the System Works
 
-### Authentication & Security [8 Marks]
-- Participant registration with IIIT email domain validation
-- Non-IIIT participant registration with email/password
-- Organizer accounts provisioned by Admin (no self-registration)
-- Admin account seeded via backend on first run
-- Passwords hashed using bcrypt (no plaintext storage)
-- JWT-based authentication on all protected routes
-- Role-based access control on frontend and backend
-- Persistent sessions via localStorage; logout clears all tokens
+### User Roles
 
-### User Onboarding & Preferences [3 Marks]
-- Post-signup interest selection (multiple categories)
-- Option to follow clubs/organizers during onboarding
-- Skip option available; preferences editable from Profile page
-- Preferences stored in database and influence event ordering
+There are three roles. Each user has exactly one role and cannot switch.
 
-### User Data Models [2 Marks]
-- Participant: firstName, lastName, email, participantType, collegeName, contactNumber, hashed password, interests, followedOrganizers
-- Organizer: name, category, description, contactEmail, contactNumber, discordWebhook, isActive flag
+- **Participant** — registers for events, purchases merchandise, views tickets, follows clubs, posts in forums, and submits feedback.
+- **Organizer** — represents a club; creates and manages events, reviews payment proofs, scans tickets for attendance, and moderates the discussion forum.
+- **Admin** — manages organizer accounts and handles organizer password reset requests.
 
-### Event Types [2 Marks]
-- Normal Event (individual registration with custom form)
-- Merchandise Event (individual purchase with variant selection)
+### Authentication
 
-### Event Attributes [2 Marks]
-- Name, description, type, eligibility, registration deadline, start/end dates, registration limit, fee, organizer reference, tags, status, view count
-- Normal events: dynamic custom form fields (form builder)
-- Merchandise events: variant items with size, color, stock, purchase limit
+All users log in with email and password. Passwords are hashed with bcrypt before being stored. On login, a JWT token is returned and stored in the browser's localStorage. Every API request attaches this token in the Authorization header. The backend verifies the token and checks the user's role before allowing access. Sessions persist across browser restarts and expire after 7 days.
 
-### Participant Features [22 Marks]
-- **Navbar**: Dashboard, Browse Events, Clubs/Organizers, Profile, Logout
-- **My Events Dashboard**: Upcoming events display, participation history with tabs (Normal, Merchandise, Completed, Cancelled), ticket ID references
-- **Browse Events**: Search with partial/fuzzy matching, trending top 5, filters (type, eligibility, date range, followed clubs)
-- **Event Details**: Full event info, type indicator, registration/purchase button with validation, blocking for deadline/limit
-- **Event Registration**: Normal event form submission with ticket + email; Merchandise purchase with stock decrement, QR ticket, confirmation email
-- **Profile Page**: Editable fields (name, contact, college, interests, followed clubs); non-editable email and participant type; password change
-- **Clubs/Organizers Listing**: All active organizers with follow/unfollow
-- **Organizer Detail Page**: Info, upcoming and past events
+Organizer accounts are created only by the Admin — organizers cannot self-register. The Admin account is seeded automatically when the backend starts for the first time.
 
-### Organizer Features [18 Marks]
-- **Navbar**: Dashboard, Create Event, Profile, Logout
-- **Dashboard**: Events carousel with status cards, analytics (registrations, sales, revenue, completed events), full event table
-- **Event Detail (Organizer View)**: Overview with status, analytics (registrations, attended, cancelled, revenue), participant list with search/filter, CSV export
-- **Event Creation & Editing**: 3-step flow (Basic Info → Form Builder/Merch → Review), draft/publish workflow, editing rules enforced per status, form builder with field types and reordering
-- **Profile**: Editable name, category, description, contact; Discord webhook for auto-posting new events
+### Events
 
-### Admin Features [6 Marks]
-- **Navbar**: Dashboard, Manage Clubs/Organizers, Logout
-- **Dashboard**: System stats (participants, organizers, events, active events)
-- **Club/Organizer Management**: Create with auto-generated credentials, disable/enable accounts, permanent delete option, password reset
+Events have two types:
 
-## Setup & Installation
+- **Normal events** — participants fill out a custom registration form built by the organizer. On successful registration, a ticket with a unique ID and QR code is generated and emailed to the participant.
+- **Merchandise events** — participants select a size/color variant and quantity. If the event has a fee, the order enters a payment approval workflow before a ticket is issued.
+
+Events follow a status lifecycle: **Draft → Published → Ongoing → Completed / Closed**. Organizers can only edit certain fields depending on the current status.
+
+### Participant Flow
+
+1. Sign up → complete onboarding (select interests, follow clubs)
+2. Browse events using search, filters, or the trending section
+3. Register for an event or purchase merchandise
+4. View ticket with QR code on the event page or dashboard
+5. Participate in the event forum, submit feedback after the event
+
+### Organizer Flow
+
+1. Log in → create events using a three-step form
+2. Publish events when ready
+3. View registrations, analytics, and participant list
+4. For merchandise events: review payment proofs and approve or reject
+5. During the event: use the QR scanner to mark attendance
+6. After the event: view anonymous feedback from participants
+
+### Admin Flow
+
+1. Log in → view system stats
+2. Create organizer accounts (credentials are auto-generated)
+3. Disable or delete organizer accounts as needed
+4. Review and approve or reject organizer password reset requests
+
+---
+
+## Advanced Features
+
+### Merchandise Payment Approval Workflow
+
+**Why this was chosen:** It builds directly on the existing merchandise event system and adds a real-world payment verification step. It demonstrates a multi-state workflow with file uploads, organizer review, and conditional ticket generation.
+
+When a participant purchases merchandise from a paid event, the order enters a **pending payment** state. The participant sees an upload prompt where they attach a screenshot or image of their payment.
+
+The organizer opens the **Payment Approvals** page for that event. Orders are listed with participant name, item details, and the uploaded payment image. The organizer can:
+- **Approve** — the order is marked successful, stock is decremented, a ticket with QR code is generated, and a confirmation email is sent.
+- **Reject** — the organizer provides a reason; the participant sees the rejection message and can re-upload a new proof.
+
+No ticket or QR code is generated while the order is in pending or rejected state.
+
+Implementation details:
+- The Registration model has `paymentStatus` (pending/approved/rejected), `paymentProof` (file path), `paymentNote`, `paymentReviewedBy`, and `paymentReviewedAt` fields.
+- Payment proof images are uploaded via multer with a 5MB size limit and stored in the `uploads/` directory.
+- The backend serves the uploads folder as static files so the organizer can view the image directly in the browser.
+
+---
+
+### QR Scanner and Attendance Tracking
+
+**Why this was chosen:** It completes the event lifecycle. Tickets with QR codes are already generated — this feature closes the loop by letting organizers actually validate those tickets at the door and track who showed up.
+
+Organizers open the **QR Scanner** page for any of their events. They enter or paste a ticket ID (readable from any QR scanner app or typed manually). The backend:
+- Confirms the ticket belongs to this event
+- Checks the registration is not cancelled or rejected
+- Detects duplicate scans and returns the original scan time
+- If valid, marks the registration as `attended` with a timestamp
+
+The page shows a live attendance dashboard with checked-in count, total registered, a progress bar, and lists of who has and has not been scanned. Organizers can manually mark or unmark any participant for exceptional cases. An **Export CSV** button downloads the full attendance report.
+
+Implementation details:
+- Attendance is tracked by updating the registration status to `attended` — no separate attendance collection needed.
+- Text input for ticket ID works with any physical barcode/QR scanner that outputs text as keyboard input.
+- CSV export is generated server-side for consistent formatting.
+
+---
+
+### Organizer Password Reset Workflow
+
+**Why this was chosen:** Organizers cannot reset their own passwords — it must go through the Admin. This implements that complete request-approval lifecycle with status tracking and audit history.
+
+Organizers submit a **password reset request** from their profile page with a reason. The admin sees all pending requests on the **Password Resets** page and can:
+- **Approve** — a new random 12-character password is generated, hashed, and saved. The plaintext password is shown to the admin to share with the organizer.
+- **Reject** — the admin provides a comment explaining why.
+
+Duplicate pending requests are blocked — an organizer cannot submit a new request while one is already pending. All requests are stored with timestamps for a full history.
+
+Implementation details:
+- The PasswordResetRequest model stores organizerId, userId, reason, status, adminComment, newPassword, and reviewedAt.
+- New passwords are generated using `crypto.randomBytes(6).toString('hex')` — a secure 12-character hex string.
+- The new password is hashed with bcrypt before being saved to the User record.
+
+---
+
+### Real-Time Discussion Forum
+
+**Why this was chosen:** It adds a communication layer to events so participants can ask questions and interact with the organizer, and organizers can post announcements — all within the platform.
+
+Each event has a **Discussion Forum** accessible from the event detail page. Registered participants and the organizer can post messages.
+
+Features:
+- **Posting** — any registered participant or the organizer can post
+- **Threading** — participants can reply to a specific message; replies appear indented under the original
+- **Reactions** — users can react with 👍 or ❤️; clicking again removes the reaction
+- **Organizer moderation** — organizers can pin messages (they appear at the top), post announcements (highlighted differently), and delete any message
+- **Self-delete** — participants can delete their own messages
+- **Near real-time updates** — the forum polls for new messages every 5 seconds
+
+Implementation details:
+- The ForumMessage model has eventId, userId, content, parentId (for threading), isPinned, isAnnouncement, reactions array, and isDeleted flag.
+- Polling every 5 seconds was chosen over WebSockets to keep the backend simple and work on free hosting tiers.
+- Deleted messages use a soft-delete flag rather than being removed from the database.
+- A compound index on `eventId + createdAt` ensures efficient retrieval.
+
+---
+
+### Anonymous Feedback System
+
+**Why this was chosen:** It gives participants a way to share their experience after an event, and gives organizers useful aggregated data — with minimal complexity to implement.
+
+After an event, registered participants can submit **anonymous feedback** from the event page. Feedback is a star rating (1 to 5) and an optional text comment.
+
+The feedback page shows:
+- A star rating selector with hover preview
+- A text area for comments
+- After submission: average rating, total reviews, a rating distribution bar chart, and individual comments — all without any user names attached
+
+Participants can update their feedback if they change their mind.
+
+Implementation details:
+- The Feedback model has eventId, userId, rating, and comment fields.
+- A unique compound index on `eventId + userId` enforces one feedback per participant per event at the database level.
+- Aggregation (average, distribution) is computed on the backend.
+- Comments are returned without any user identification to maintain anonymity.
+
+---
+
+## Setup and Installation
 
 ### Prerequisites
-- Node.js v18+ installed
-- MongoDB Atlas account (or local MongoDB instance)
-- Gmail account for sending emails (with App Password enabled)
 
-### Backend Setup
+- Node.js v18 or higher
+- A MongoDB Atlas cluster (or local MongoDB)
+- A Gmail account with an App Password enabled (for sending emails)
+
+### Backend
+
 ```bash
 cd backend
 npm install
 ```
 
-Create a `.env` file in the backend folder:
+Create a `.env` file inside the `backend/` folder:
+
 ```
-PORT=5000
-MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/felicity
-JWT_SECRET=your_secret_key
-EMAIL_USER=your_email@gmail.com
+PORT=5001
+MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/felicity
+JWT_SECRET=your_jwt_secret_key
+EMAIL_USER=your_gmail@gmail.com
 EMAIL_PASS=your_gmail_app_password
 FRONTEND_URL=http://localhost:5173
 ```
 
 Start the backend:
+
 ```bash
 npm run dev
 ```
 
-The admin account is seeded automatically on first run:
+The admin account is created automatically on first run:
 - Email: `admin@felicity.com`
 - Password: `admin123`
 
-### Frontend Setup
+### Frontend
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-The frontend runs on `http://localhost:5173` and proxies API requests to the backend on port 5000.
+The frontend runs on `http://localhost:5173`. API requests and uploaded file requests are proxied to the backend on port 5001 via Vite's proxy configuration.
 
 ### Production Build
+
 ```bash
 cd frontend
 npm run build
 ```
 
-## Design Decisions
+The built files go into `frontend/dist/` and can be served by any static hosting provider such as Netlify.
 
-1. **Single User model with role field** - Instead of separate collections per role, a single User model with a `role` field keeps authentication simple. Organizer-specific data is stored in a separate Organizer collection linked via userId.
+---
 
-2. **Event status state machine** - Events follow a strict lifecycle: Draft → Published → Ongoing → Completed/Closed. Editing permissions are restricted based on current status to prevent data inconsistencies.
+## Key Design Decisions
 
-3. **Form builder stored as subdocuments** - Custom registration form fields are embedded within the Event document as an array of subdocuments, avoiding the need for a separate forms collection and simplifying queries.
+**Single User collection with a role field** — All users are stored in one User collection with a `role` field (participant, organizer, admin). Organizer-specific data lives in a separate Organizer collection linked by `userId`. This keeps authentication logic consistent across all roles.
 
-4. **QR codes as base64 data URLs** - QR codes are generated server-side and stored as base64 strings in the Ticket document. This avoids file system dependencies and makes tickets portable.
+**Event status as a state machine** — Events move through Draft → Published → Ongoing → Completed/Closed. What an organizer can edit depends on the current status. For example, the registration fee cannot be changed after an event is published.
 
-5. **JWT with 7-day expiry** - Balances security with user convenience. Tokens are stored in localStorage for session persistence across browser restarts, as required by the spec.
+**Custom form fields as embedded subdocuments** — Each event stores its registration form fields as an array inside the Event document. This avoids a separate forms collection and keeps all event data in one query.
 
-## Advanced Features Implemented (Part 2) [30 Marks]
+**QR codes stored as base64 strings** — QR codes are generated server-side using the `qrcode` library and stored as base64 data URLs in the Ticket document. This avoids file system dependencies and makes tickets self-contained.
 
-### Tier A: Core Advanced Features [16 Marks]
+**JWT with 7-day expiry** — Tokens are stored in localStorage for session persistence across browser restarts. The 7-day window balances security with convenience for a fest platform.
 
-#### 1. Merchandise Payment Approval Workflow [8 Marks]
-**Justification:** Chosen because it builds directly on the existing merchandise event system and adds real-world payment verification logic that demonstrates complex state management.
-
-**Implementation approach:**
-- Extended the Registration model with `paymentStatus` (pending/approved/rejected), `paymentProof` (file path), `paymentReviewedBy`, and `paymentNote` fields
-- When a participant purchases merchandise with a fee, the order enters `pending_payment` status instead of immediately generating a ticket
-- Participant uploads a payment proof image via multer file upload to `/api/events/:id/upload-payment`
-- Organizers see a dedicated Payment Approvals tab (`/organizer/events/:id/payments`) with filter tabs for all/pending/approved/rejected orders
-- On approval: ticket with QR code is generated, stock is decremented, confirmation email is sent via nodemailer
-- On rejection: participant is notified via email with the rejection reason and can re-upload a new proof
-- No QR code or ticket is generated while the order is in pending or rejected state
-
-**Technical decisions:**
-- Used multer for server-side file upload handling with 5MB size limit
-- Payment proof images are stored in the `/uploads` directory and served as static files
-- Approval/rejection actions are idempotent and include audit fields (reviewedBy, reviewedAt)
-
-#### 2. QR Scanner & Attendance Tracking [8 Marks]
-**Justification:** Chosen because it completes the event lifecycle by enabling organizers to verify tickets and track attendance during events, leveraging the existing QR code infrastructure.
-
-**Implementation approach:**
-- Built a scanner interface at `/organizer/events/:id/scanner` where organizers enter or paste ticket IDs
-- Backend validates the ticket against the specific event, checks for duplicate scans, and marks attendance with timestamp
-- Live attendance dashboard shows scanned vs not-yet-scanned counts with a progress bar
-- Duplicate scan detection returns the original scan time and participant name
-- Cancelled or rejected registrations are blocked from scanning
-- Manual override allows organizers to mark/unmark attendance for exceptional cases
-- Attendance reports exportable as CSV with name, email, ticket ID, status, and scan timestamp
-- Scan history displayed in real-time on the scanner page
-
-**Technical decisions:**
-- Used text input for ticket ID entry (works with physical QR scanners that output text, mobile camera apps, or manual entry)
-- Attendance is tracked by changing registration status to `attended`, avoiding a separate attendance collection
-- Export endpoint generates CSV server-side for reliable formatting
-
-### Tier B: Real-time & Communication Features [12 Marks]
-
-#### 1. Real-Time Discussion Forum [6 Marks]
-**Justification:** Chosen because it adds collaborative functionality to events, allowing participants and organizers to interact, which improves engagement and communication.
-
-**Implementation approach:**
-- Created a ForumMessage model with fields for eventId, userId, content, parentId (for threading), isPinned, isAnnouncement, reactions, and isDeleted (soft delete)
-- Forum page at `/events/:id/forum` accessible to registered participants and the event organizer
-- Messages are polled every 5 seconds for near real-time updates without requiring WebSocket infrastructure
-- Organizers can post announcements (highlighted with a distinct style), pin important messages, and moderate by deleting inappropriate content
-- Participants can reply to messages (threaded view), react with emoji (👍 or ❤️), and delete their own messages
-- Reactions toggle on/off per user per emoji to prevent spam
-- Messages sorted with pinned first, then by creation date
-
-**Technical decisions:**
-- Used polling (setInterval 5s) instead of WebSockets to keep the infrastructure simple and deployment-friendly on free hosting tiers
-- Soft delete (isDeleted flag) preserves data integrity while hiding deleted messages from the UI
-- Compound index on `eventId + createdAt` for efficient message retrieval
-
-#### 2. Organizer Password Reset Workflow [6 Marks]
-**Justification:** Chosen because it implements a complete request-approval lifecycle that demonstrates workflow management, and it directly addresses the spec requirement that organizer password resets must go through Admin.
-
-**Implementation approach:**
-- Created a PasswordResetRequest model with fields for organizerId, userId, reason, status (pending/approved/rejected), adminComment, newPassword, and reviewedAt
-- Organizers can submit a password reset request from their profile with a reason (via `/api/admin/password-reset-request`)
-- Duplicate pending requests are prevented (one active request per organizer)
-- Admin sees all requests at `/admin/password-resets` with filter tabs for pending/approved/rejected
-- Admin can approve (auto-generates new password, updates the user record, displays credentials) or reject (with a comment explaining why)
-- Request history is maintained with timestamps for full audit trail
-- Generated passwords are displayed to admin for sharing with the organizer
-
-**Technical decisions:**
-- Password generation uses `crypto.randomBytes(6).toString('hex')` for 12-character random passwords
-- New password is hashed with bcrypt before storing in the User model
-- The plaintext password is stored in the request record so admin can reference it later if needed
-
-### Tier C: Integration & Enhancement Features [2 Marks]
-
-#### 1. Anonymous Feedback System [2 Marks]
-**Justification:** Chosen because it provides valuable post-event insights for organizers with minimal implementation complexity, and it enhances the participant experience by giving them a voice.
-
-**Implementation approach:**
-- Created a Feedback model with eventId, userId, rating (1-5 stars), and comment fields
-- One feedback per user per event enforced via compound unique index
-- Participants who attended an event can submit feedback at `/events/:id/feedback`
-- Star rating with hover preview and optional text comment
-- Organizers see aggregated stats: average rating, total reviews, rating distribution bar chart, and individual comments
-- Feedback is displayed anonymously (no user names shown in the feedback list)
-- Users can update their feedback if they change their mind
-
-**Technical decisions:**
-- Used a unique compound index (`eventId + userId`) to enforce one feedback per participant per event at the database level
-- Aggregation is computed server-side to keep the frontend lightweight
-- Comments are displayed without user identification to maintain true anonymity
-
-## Libraries and Frameworks Summary
-
-| Library | Version | Purpose |
-|---------|---------|---------|
-| express | 4.18 | REST API framework |
-| mongoose | 7.6 | MongoDB ODM with schema validation |
-| bcrypt | 5.1 | Password hashing |
-| jsonwebtoken | 9.0 | JWT authentication |
-| nodemailer | 6.9 | Email notifications |
-| qrcode | 1.5 | QR code generation for tickets |
-| multer | 1.4 | File upload handling (payment proofs) |
-| uuid | 9.0 | Unique ticket ID generation |
-| cors | 2.8 | Cross-origin request support |
-| dotenv | 16.3 | Environment variable management |
-| react | 18.2 | UI component library |
-| vite | 5.0 | Fast dev server and build tool |
-| react-router-dom | 6.20 | Client-side routing |
-| tailwindcss | 3.3 | Utility-first CSS framework |
-| axios | 1.6 | HTTP client with interceptors |
-| react-hot-toast | 2.4 | Toast notifications |
+**Polling for forum updates** — The discussion forum polls the backend every 5 seconds instead of using WebSockets. This keeps the server stateless and works reliably on free hosting tiers without any additional infrastructure.

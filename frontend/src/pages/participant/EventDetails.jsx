@@ -14,6 +14,7 @@ function EventDetails() {
   const [formResponses, setFormResponses] = useState({});
   const [selectedVariant, setSelectedVariant] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [uploadingPayment, setUploadingPayment] = useState(false);
 
   useEffect(() => {
     fetchEvent();
@@ -62,8 +63,16 @@ function EventDetails() {
       const res = await api.post('/events/' + id + '/register', body);
       setIsRegistered(true);
       setRegistration(res.data.registration);
-      setTicket({ ticketId: res.data.ticket.ticketId, qrCode: res.data.ticket.qrCode });
-      toast.success('Registration successful!');
+
+      if (res.data.ticket) {
+        setTicket({ ticketId: res.data.ticket.ticketId, qrCode: res.data.ticket.qrCode });
+      }
+
+      if (res.data.requiresPayment) {
+        toast.success('Order placed! Please upload payment proof below.');
+      } else {
+        toast.success('Registration successful!');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed');
     } finally {
@@ -78,6 +87,33 @@ function EventDetails() {
   const limitReached = event.registrationLimit > 0 && event.registrationCount >= event.registrationLimit;
   const canRegister = !isRegistered && !deadlinePassed && !limitReached &&
     (event.status === 'published' || event.status === 'ongoing');
+
+  const handlePaymentProofUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
+    setUploadingPayment(true);
+    try {
+      const formData = new FormData();
+      formData.append('paymentProof', file);
+      
+      await api.post('/events/' + id + '/upload-payment', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      toast.success('Payment proof uploaded successfully!');
+      fetchEvent(); // Refresh to show updated status
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload payment proof');
+    } finally {
+      setUploadingPayment(false);
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -234,7 +270,39 @@ function EventDetails() {
           <h2 className="text-lg font-semibold text-green-800 mb-2">You are registered!</h2>
           <p className="text-sm text-green-700 mb-3">
             Status: <span className="font-medium">{registration?.status}</span>
+            {registration?.paymentStatus && registration.paymentStatus !== 'not_required' && (
+              <span className="ml-2">| Payment: <span className="font-medium">{registration.paymentStatus}</span></span>
+            )}
           </p>
+
+          {/* Payment proof upload for pending or rejected payment */}
+          {(registration?.paymentStatus === 'pending' || registration?.paymentStatus === 'rejected') && (
+            <div className={`border rounded p-3 mb-3 ${registration.paymentStatus === 'rejected' ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
+              {registration.paymentStatus === 'rejected' && registration.paymentNote && (
+                <p className="text-sm text-red-700 mb-2">Rejected: {registration.paymentNote}</p>
+              )}
+              <p className="text-sm text-yellow-800 mb-2">
+                {registration.paymentStatus === 'rejected'
+                  ? 'Please upload a new payment proof:'
+                  : 'Upload payment proof to complete your registration:'}
+              </p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePaymentProofUpload}
+                className="text-sm file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+              />
+              {uploadingPayment && <p className="text-xs text-yellow-600 mt-1">Uploading...</p>}
+              {registration.paymentProof && (
+                <p className="text-xs text-green-600 mt-1">Payment proof already uploaded. You can upload a new one to replace it.</p>
+              )}
+            </div>
+          )}
+
+          {registration?.paymentStatus === 'approved' && !ticket && (
+            <p className="text-sm text-green-700 mb-3">Payment approved! Your ticket will be available shortly.</p>
+          )}
+
           {ticket && (
             <div className="bg-white rounded p-4 text-center">
               <p className="text-sm mb-2">Ticket ID: <span className="font-mono font-bold">{ticket.ticketId}</span></p>

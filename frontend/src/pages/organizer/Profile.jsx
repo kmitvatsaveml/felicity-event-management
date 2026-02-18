@@ -14,6 +14,8 @@ function OrganizerProfile() {
     discordWebhook: ''
   });
   const [saving, setSaving] = useState(false);
+  const [resetReason, setResetReason] = useState('');
+  const [requestingReset, setRequestingReset] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -49,6 +51,23 @@ function OrganizerProfile() {
       toast.error('Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePasswordResetRequest = async () => {
+    if (!resetReason.trim()) {
+      toast.error('Please provide a reason for the reset request');
+      return;
+    }
+    setRequestingReset(true);
+    try {
+      await api.post('/admin/password-reset-request', { reason: resetReason.trim() });
+      toast.success('Password reset request submitted to admin');
+      setResetReason('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit request');
+    } finally {
+      setRequestingReset(false);
     }
   };
 
@@ -97,6 +116,30 @@ function OrganizerProfile() {
           </button>
         </div>
       </form>
+
+      {/* Password Reset Request */}
+      <div className="card mb-6">
+        <h2 className="text-lg font-semibold mb-3">Request Password Reset</h2>
+        <p className="text-sm text-gray-500 mb-3">
+          Submit a request to the admin to reset your password. You will receive a new password once approved.
+        </p>
+        <div className="space-y-3">
+          <textarea
+            value={resetReason}
+            onChange={(e) => setResetReason(e.target.value)}
+            placeholder="Why do you need a password reset? (e.g., forgot password, security concern)"
+            rows={2}
+            className="input-field"
+          />
+          <button
+            onClick={handlePasswordResetRequest}
+            disabled={requestingReset}
+            className="btn-secondary"
+          >
+            {requestingReset ? 'Submitting...' : 'Submit Reset Request'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

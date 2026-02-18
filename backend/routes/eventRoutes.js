@@ -20,6 +20,23 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
+// GET /api/events/my/registrations - get all registrations for participant
+router.get('/my/registrations', protect, authorize('participant'), async (req, res) => {
+  try {
+    const registrations = await Registration.find({ userId: req.user._id })
+      .populate({
+        path: 'eventId',
+        populate: { path: 'organizerId', select: 'name category' }
+      })
+      .sort({ registeredAt: -1 });
+
+    res.json(registrations);
+  } catch (err) {
+    console.error('My registrations error:', err);
+    res.status(500).json({ message: 'Failed to fetch registrations' });
+  }
+});
+
 // GET /api/events - browse events (public for participants)
 router.get('/', protect, async (req, res) => {
   try {
@@ -270,23 +287,6 @@ router.post('/:id/register', protect, authorize('participant'), async (req, res)
       return res.status(400).json({ message: 'Already registered for this event' });
     }
     res.status(500).json({ message: 'Registration failed' });
-  }
-});
-
-// GET /api/events/my/registrations - get all registrations for participant
-router.get('/my/registrations', protect, authorize('participant'), async (req, res) => {
-  try {
-    const registrations = await Registration.find({ userId: req.user._id })
-      .populate({
-        path: 'eventId',
-        populate: { path: 'organizerId', select: 'name category' }
-      })
-      .sort({ registeredAt: -1 });
-
-    res.json(registrations);
-  } catch (err) {
-    console.error('My registrations error:', err);
-    res.status(500).json({ message: 'Failed to fetch registrations' });
   }
 });
 
